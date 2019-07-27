@@ -1,0 +1,450 @@
+![](https://user-gold-cdn.xitu.io/2019/7/27/16c313184b5eea05?w=2056&h=1536&f=png&s=806985)
+
+# 前端的最重要的基础知识点是什么？
+
+* 原生`javaScript`，`HTML`,`CSS`.
+* `Dom`操作
+* `EventLoop`和渲染机制
+* 各类工程化的工具原理以及使用，根据需求定制编写插件和包。（webpack的plugin和babel的预设包）
+* 数据结构和算法（特别是`IM`以及超大型高并发网站应用等，例如`B站`）
+* 最后便是通信协议
+
+
+> 在使用某个技术的时候，一定要去追寻原理和底层的实现，长此以往坚持，只要自身底层的基础扎实，无论技术怎么变化，学习起来都不会太累，总的来说就是拒绝5分钟技术
+
+
+
+## 从输入一个`url`地址，到显示页面发生了什么出发：
+
+* 1.浏览器向 DNS 服务器请求解析该 URL 中的域名所对应的 IP 地址;
+* 2.建立TCP连接（三次握手）;
+* 3.浏览器发出读取文件(URL 中域名后面部分对应的文件)的HTTP 请求，该请求报文作为 TCP 三次握手的第三个报文的数据发送给服务器;
+* 4.服务器对浏览器请求作出响应，并把对应的 html 文本发送给浏览器;
+* 5.浏览器将该 html 文本并显示内容;
+* 6.释放 TCP连接（四次挥手）;
+
+## 目前常见的通信协议都是建立在`TCP`链接之上
+
+### 那么什么是`TCP`呢
+
+#### TCP是因特网中的传输层协议，使用三次握手协议建立连接。当主动方发出SYN连接请求后，等待对方回答
+
+> TCP三次握手的过程如下：
+* 客户端发送`SYN`报文给服务器端，进入`SYN_SEND`状态。
+* 服务器端收到`SYN`报文，回应一个`SYN`（SEQ=y）ACK（ACK=x+1）报文，进入SYN_RECV状态。
+* 客户端收到服务器端的SYN报文，回应一个ACK（ACK=y+1）报文，进入Established状态。
+* 三次握手完成，TCP客户端和服务器端成功地建立连接，可以开始传输数据了。
+> 如图所示： 
+
+![](https://user-gold-cdn.xitu.io/2019/7/27/16c313e964b67bd7?w=525&h=451&f=png&s=78929)
+
+> `TCP`的四次挥手：
+* 建立一个连接需要三次握手，而终止一个连接要经过四次握手，这是由TCP的半关闭（half-close）造成的。具体过程如下图所示。 
+* 某个应用进程首先调用close，称该端执行“主动关闭”（active close）。该端的TCP于是发送一个FIN分节，表示数据发送完毕。
+*  接收到这个FIN的对端执行 “被动关闭”（passive close），这个FIN由TCP确认。
+注意：FIN的接收也作为一个文件结束符（end-of-file）传递给接收端应用进程，放在已排队等候该应用进程接收的任何其他数据之后，因为，FIN的接收意味着接收端应用进程在相应连接上再无额外数据可接收。
+*  一段时间后，接收到这个文件结束符的应用进程将调用close关闭它的套接字。这导致它的TCP也发送一个FIN。
+*  接收这个最终FIN的原发送端TCP（即执行主动关闭的那一端）确认这个FIN。 [3] 
+既然每个方向都需要一个FIN和一个ACK，因此通常需要4个分节。
+> 特别提示： `SYN`报文用来通知，`FIN`报文是用来同步的
+
+![](https://user-gold-cdn.xitu.io/2019/7/27/16c3141c9c32dedf?w=999&h=702&f=png&s=184258)
+> 以上就是面试官常问的三次握手，四次挥手，但是这不仅仅面试题，上面仅仅答到了一点皮毛，学习这些是为了让我们后续方便了解他的优缺点。
+
+
+## 在`TCP`连接建立后，我们可以有多种协议的方式通信交换数据：
+
+### 最古老的方式一：`http 1.0`
+
+* 早先1.0的HTTP版本，是一种无状态、无连接的应用层协议。
+
+* HTTP1.0规定浏览器和服务器保持短暂的连接，浏览器的每次请求都需要与服务器建立一个TCP连接，服务器处理完成后立即断开TCP连接（无连接），服务器不跟踪每个客户端也不记录过去的请求（无状态）。
+
+* 这种无状态性可以借助cookie/session机制来做身份认证和状态记录。而下面两个问题就比较麻烦了。
+
+* 首先，无连接的特性导致最大的性能缺陷就是无法复用连接。每次发送请求的时候，都需要进行一次TCP的连接，而TCP的连接释放过程又是比较费事的。这种无连接的特性会使得网络的利用率非常低。
+
+* 其次就是队头阻塞（headoflineblocking）。由于HTTP1.0规定下一个请求必须在前一个请求响应到达之前才能发送。假设前一个请求响应一直不到达，那么下一个请求就不发送，同样的后面的请求也给阻塞了。
+
+> `Http 1.0`的致命缺点,就是无法复用`TCP`连接和并行发送请求，这样每次一个请求都需要三次握手，而且其实建立连接和释放连接的这个过程是最耗时的，传输数据相反却不那么耗时。还有本地时间被修改导致响应头`expires`的缓存机制失效的问题～（后面会详细讲）
+
+* 常见的请求报文～
+![](https://user-gold-cdn.xitu.io/2019/7/27/16c3159e440ac93d?w=1038&h=888&f=png&s=159188)
+
+### 于是出现了`Http 1.1`，这也是技术的发展必然结果～
+
+* `Http 1.1`出现，继承了`Http1.0`的优点，也克服了它的缺点，出现了`keep-alive`这个头部字段，它表示会在建立`TCP`连接后，完成首次的请求，并不会立刻断开`TCP`连接，而是保持这个连接状态～进而可以复用这个通道
+
+* `Http 1.1`并且支持请求管道化，“并行”发送请求，但是这个并行，也不是真正意义上的并行，而是可以让我们把先进先出队列从客户端（请求队列）迁移到服务端（响应队列）
+ 
+> 例如：客户端同时发了两个请求分别来获取html和css，假如说服务器的css资源先准备就绪，服务器也会先发送html再发送css。
+
+* `B站`首页，就有`keep-alive`，因为他们也有`IM`的成分在里面。需要大量复用`TCP`连接～
+
+![](https://user-gold-cdn.xitu.io/2019/7/27/16c315fe01fbcaf1?w=804&h=876&f=png&s=140277)
+
+* `HTTP1.1`好像还是无法解决队头阻塞的问题
+
+> 实际上，现阶段的浏览器厂商采取了另外一种做法，它允许我们打开多个TCP的会话。也就是说，上图我们看到的并行，其实是不同的TCP连接上的HTTP请求和响应。这也就是我们所熟悉的浏览器对同域下并行加载6~8个资源的限制。而这，才是真正的并行！
+
+
+#### `Http 1.1`的致命缺点：
+* 1.明文传输
+* 2.其实还是没有解决无状态连接的
+* 3.当有多个请求同时被挂起的时候 就会拥塞请求通道，导致后面请求无法发送
+* 4.臃肿的消息首部:HTTP/1.1能压缩请求内容,但是消息首部不能压缩;在现今请求中,消息首部占请求绝大部分(甚至是全部)也较为常见.
+
+> 我们也可以用`dns-prefetch和 preconnect tcp`来优化～
+```
+<link rel="preconnect" href="//example.com" crossorigin>
+<link rel="dns=prefetch" href="//example.com">
+```
+* `Tip`:  `webpack`可以做任何事情，这些都可以用插件实现
+
+### 基于这些缺点，出现了`Http 2.0`
+
+
+#### 相较于HTTP1.1，HTTP2.0的主要优点有采用二进制帧封装，传输变成多路复用，流量控制算法优化，服务器端推送，首部压缩，优先级等特点。
+
+####   HTTP1.x的解析是基于文本的，基于文本协议的格式解析存在天然缺陷，文本的表现形式有多样性，要做到健壮性考虑的场景必然很多。而HTTP/2会将所有传输的信息分割为更小的消息和帧，然后采用二进制的格式进行编码，HTTP1.x的头部信息会被封装到HEADER frame，而相应的RequestBody则封装到DATAframe里面。不改动HTTP的语义，使用二进制编码，实现方便且健壮。
+
+#### 多路复用
+
+* 所有的请求都是通过一个 TCP 连接并发完成。HTTP/1.x 虽然通过 pipeline 也能并发请求，但是多个请求之间的响应会被阻塞的，所以 pipeline 至今也没有被普及应用，而 HTTP/2 做到了真正的并发请求。同时，流还支持优先级和流量控制。当流并发时，就会涉及到流的优先级和依赖。即：HTTP2.0对于同一域名下所有请求都是基于流的，不管对于同一域名访问多少文件，也只建立一路连接。优先级高的流会被优先发送。图片请求的优先级要低于 CSS 和 SCRIPT，这个设计可以确保重要的东西可以被优先加载完
+
+#### 流量控制
+* TCP协议通过sliding window的算法来做流量控制。发送方有个sending window，接收方有receive window。http2.0的flow control是类似receive window的做法，数据的接收方通过告知对方自己的flow window大小表明自己还能接收多少数据。只有Data类型的frame才有flow control的功能。对于flow control，如果接收方在flow window为零的情况下依然更多的frame，则会返回block类型的frame，这张场景一般表明http2.0的部署出了问题。
+
+#### 服务器端推送
+* 服务器端的推送，就是服务器可以对一个客户端请求发送多个响应。除了对最初请求的响应外，服务器还可以额外向客户端推送资源，而无需客户端明确地请求。当浏览器请求一个html，服务器其实大概知道你是接下来要请求资源了，而不需要等待浏览器得到html后解析页面再发送资源请求。
+
+#### 首部压缩
+* HTTP 2.0 在客户端和服务器端使用“首部表”来跟踪和存储之前发送的键-值对，对于相同的数据，不再通过每次请求和响应发送;通信期间几乎不会改变的通用键-值对(用户代理、可接受的媒体类型,等等)只 需发送一次。事实上,如果请求中不包含首部(例如对同一资源的轮询请求),那么 首部开销就是零字节。此时所有首部都自动使用之前请求发送的首部。
+
+* 如果首部发生变化了，那么只需要发送变化了数据在Headers帧里面，新增或修改的首部帧会被追加到“首部表”。首部表在 HTTP 2.0 的连接存续期内始终存在,由客户端和服务器共同渐进地更新 。
+
+* 本质上，当然是为了减少请求啦，通过多个js或css合并成一个文件，多张小图片拼合成Sprite图，可以让多个HTTP请求减少为一个，减少额外的协议开销，而提升性能。当然，一个HTTP的请求的body太大也是不合理的，有个度。文件的合并也会牺牲模块化和缓存粒度，可以把“稳定”的代码or 小图 合并为一个文件or一张Sprite，让其充分地缓存起来，从而区分开迭代快的文件。
+
+> `Demo`的性能对比：
+![](https://user-gold-cdn.xitu.io/2019/7/27/16c317a4705c1d41?w=1594&h=878&f=png&s=486192)
+
+
+## `Http`的那些致命缺陷，并没有完全解决，于是有了`https`，也是目前应用最广的协议之一
+
+### `HTTP+ 加密 + 认证 + 完整性保护 =HTTPS ` ?
+
+#### 可以这样认为～HTTP 加上加密处理和认证以及完整性保护后即是 HTTPS
+
+
+* 如果在 HTTP 协议通信过程中使用未经加密的明文，比如在 Web 页面中输入信用卡号，如果这条通信线路遭到窃听，那么信用卡号就暴露了。
+* 另外，对于 HTTP 来说，服务器也好，客户端也好，都是没有办法确认通信方的。
+因为很有可能并不是和原本预想的通信方在实际通信。并且还需要考虑到接收到的报文在通信途中已经遭到篡改这一可能性。
+* 为了统一解决上述这些问题，需要在 HTTP 上再加入加密处理和认证等机制。我们把添加了加密及认证机制的 HTTP 称为 HTTPS 
+
+> 不加密的重要内容被`wireshark`这类工具抓到包，后果很严重～
+
+### HTTPS 是身披 SSL 外壳的 HTTP
+
+* HTTPS 并非是应用层的一种新协议。只是 HTTP 通信接口部分用 SSL（SecureSocket Layer）和 TLS（Transport Layer Security）协议代替而已。
+通常，HTTP 直接和 TCP 通信。
+
+* 当使用 SSL 时，则演变成先和 SSL 通信，再由 SSL和 TCP 通信了。简言之，所谓 HTTPS，其实就是身披 SSL 协议这层外壳的HTTP。
+
+* 在采用 SSL 后，HTTP 就拥有了 HTTPS 的加密、证书和完整性保护这些功能。SSL 是独立于 HTTP 的协议，所以不光是 HTTP 协议，其他运行在应用层的 SMTP和 Telnet 等协议均可配合 SSL 协议使用。可以说 SSL 是当今世界上应用最为广泛的网络安全术。
+![](https://user-gold-cdn.xitu.io/2019/7/27/16c317ff113bdcec?w=1272&h=556&f=png&s=177438)
+
+
+###  相互交换密钥的公开密钥加密技术 -----对称加密
+
+
+![](https://user-gold-cdn.xitu.io/2019/7/27/16c3181baf6f608f?w=1304&h=958&f=png&s=442554)
+
+* 在对 SSL 进行讲解之前，我们先来了解一下加密方法。SSL 采用一种叫做公开密钥加密（Public-key cryptography）的加密处理方式。
+* 近代的加密方法中加密算法是公开的，而密钥却是保密的。通过这种方式得以保持加密方法的安全性。
+
+> 加密和解密都会用到密钥。没有密钥就无法对密码解密，反过来说，任何人只要持有密钥就能解密了。如果密钥被攻击者获得，那加密也就失去了意义。
+
+* https://blog.csdn.net/ituling/article/details/52541585， `Https`加密篇幅太长，这篇文章写得很好，大家可以去看看。
+ 
+
+#### HTTPS 采用混合加密机制
+
+* HTTPS 采用共享密钥加密和公开密钥加密两者并用的混合加密机制。
+* 但是公开密钥加密与共享密钥加密相比，其处理速度要慢。所以应充分利用两者各自的优势，将多种方法组合起来用于通信。在交换密钥环节使用公开密钥加密方式，之后的建立通信交换报文阶段则使用共享密钥加密方式。
+
+
+
+## `HTTPS`虽好，非对称加密虽好，但是不要滥用
+
+### HTTPS 也存在一些问题，那就是当使用 SSL 时，它的处理速度会变慢。
+ 
+#### SSL 的慢分两种。一种是指通信慢。另一种是指由于大量消耗 CPU 及内存等资源，导致处理速度变慢。
+* 和使用 HTTP 相比，网络负载可能会变慢 2 到 100 倍。除去和 TCP 连接、发送 HTTP 请求 ? 响应以外，还必须进行 SSL 通信，因此整体上处理通信量不可避免会增加。
+* 另一点是 SSL 必须进行加密处理。在服务器和客户端都需要进行加密和解密的运算处理。因此从结果上讲，比起 HTTP 会更多地消耗服务器和客户端的硬件资源，导致负载增强。
+针对速度变慢这一问题，并没有根本性的解决方案，我们会使用 SSL 加速器这种（专用服务器）硬件来改善该问题。该硬件为 SSL 通信专用硬件，相对软件来讲，能够提高数倍 SSL 的计算速度。仅在 SSL 处理时发挥 SSL加速器的功效，以分担负载。
+
+## 为什么不一直使用 HTTPS
+
+* 既然 HTTPS 那么安全可靠，那为何所有的 Web 网站不一直使用 HTTPS？
+其中一个原因是，因为与纯文本通信相比，加密通信会消耗更多的 CPU 及内存资源。如果每次通信都加密，会消耗相当多的资源，平摊到一台计算机上时，能够处理的请求数量必定也会随之减少。
+
+* 因此，如果是非敏感信息则使用 HTTP 通信，只有在包含个人信息等敏感数据时，才利用 HTTPS 加密通信。
+特别是每当那些访问量较多的 Web 网站在进行加密处理时，它们所承担着的负载不容小觑。在进行加密处理时，并非对所有内容都进行加密处理，而是仅在那些需要信息隐藏时才会加密，以节约资源。
+
+* 除此之外，想要节约购买证书的开销也是原因之一。
+要进行 HTTPS 通信，证书是必不可少的。而使用的证书必须向认证机构（CA）购买。证书价格可能会根据不同的认证机构略有不同。通常，一年的授权需要数万日元（现在一万日元大约折合 600 人民币）。那些购买证书并不合算的服务以及一些个人网站，可能只会选择采用HTTP 的通信方式。
+![](https://user-gold-cdn.xitu.io/2019/7/27/16c3189e258cf934?w=540&h=492&f=png&s=150487)
+
+## 复习完了基本的协议，介绍下报文格式：
+* 请求报文格式
+![](https://user-gold-cdn.xitu.io/2019/7/27/16c3175930872896?w=1092&h=526&f=png&s=191297)
+
+* 响应报文格式
+![](https://user-gold-cdn.xitu.io/2019/7/27/16c3175d3d5bedc8?w=1350&h=540&f=png&s=134425)
+
+
+> 所谓响应头，请求头，其实都可以自己添加字段，只要前后端给对应的处理机制即可
+
+## `Node.js`代码实现响应头的设置
+
+```
+
+  if (config.cache.expires) {
+                        res.setHeader("expries", new Date(Date.now() + (config.cache.maxAge * 1000)))
+                    }
+                    if (config.cache.lastModified) {
+                        res.setHeader("last-modified", stat.mtime.toUTCString())
+                    }
+                    if (config.cache.etag) {
+                        res.setHeader('Etag', etagFn(stat))
+                    }
+}
+ ```
+
+## 响应头的详解：
+
+![](https://user-gold-cdn.xitu.io/2019/7/27/16c3195f0028dea4?w=1696&h=1340&f=png&s=457911)
+
+
+### 本人的开源项目，手写的`Node.js`静态资源服务器，https://github.com/JinJieTan/util-static-server，欢迎 `star`~
+
+## 浏览器的缓存策略： 
+* 首次请求：
+![](https://user-gold-cdn.xitu.io/2019/7/27/16c3198af90977d0?w=1328&h=874&f=png&s=118323)
+* 非首次请求：
+![](https://user-gold-cdn.xitu.io/2019/7/27/16c31994dd77906e?w=1400&h=1132&f=png&s=228913)
+
+* 用户行为与缓存： 
+  
+![](https://user-gold-cdn.xitu.io/2019/7/27/16c3199c528a80ae?w=1162&h=916&f=png&s=95492)
+
+## 不能缓存的请求：
+
+### 无法被浏览器缓存的请求如下：
+
+*  HTTP信息头中包含Cache-Control:no-cache，pragma:no-cache（HTTP1.0），或Cache-Control:max-age=0等告诉浏览器不用缓存的请求
+
+*  需要根据Cookie，认证信息等决定输入内容的动态请求是不能被缓存的
+
+* 经过HTTPS安全加密的请求（有人也经过测试发现，ie其实在头部加入Cache-Control：max-age信息，firefox在头部加入Cache-Control:Public之后，能够对HTTPS的资源进行缓寸）
+
+*   经过HTTPS安全加密的请求（有人也经过测试发现，ie其实在头部加入Cache-Control：max-age信息，firefox在头部加入Cache-Control:Public之后，能够对HTTPS的资源进行缓存，参考《HTTPS的七个误解》）
+
+*  POST请求无法被缓存
+* HTTP响应头中不包含Last-Modified/Etag，也不包含Cache-Control/Expires的请求无法被缓存
+
+
+
+## 即时通讯协议  
+
+### 从最初的没有`websocket`协议开始：
+> 传统的协议无法服务端主动`push`数据，于是有了这些骚操作：
+* 轮询，在一个定时器中不停向服务端发送请求。
+* 长轮询，发送请求给服务端，直到服务端觉得可以返回数据了再返回响应，否则这个请求一直挂起～
+* 以上两种都有瑕疵，而且比较明显，这里不再描述。
+
+### 为了解决实时通讯，数据同步的问题，出现了`webSocket`.
+
+* `webSockets`的目标是在一个单独的持久连接上提供全双工、双向通信。在Javascript创建了Web Socket之后，会有一个HTTP请求发送到浏览器以发起连接。在取得服务器响应后，建立的连接会将HTTP升级从HTTP协议交换为WebSocket协议。
+* `webSocket`原理： 在`TCP`连接第一次握手的时候，升级为`ws`协议。后面的数据交互都复用这个`TCP`通道。
+
+* 客户端代码实现：
+```
+  const ws = new WebSocket('ws://localhost:8080');
+        ws.onopen = function () {
+            ws.send('123')
+            console.log('open')
+        }
+        ws.onmessage = function () {
+            console.log('onmessage')
+        }
+        ws.onerror = function () {
+            console.log('onerror')
+        }
+        ws.onclose = function () {
+            console.log('onclose')
+        }
+```
+
+* 服务端使用 `Node.js`语言实现 
+```
+const express = require('express')
+const { Server } = require("ws");
+const app = express()
+const wsServer = new Server({ port: 8080 })
+wsServer.on('connection', (ws) => {
+    ws.onopen = function () {
+        console.log('open')
+    }
+    ws.onmessage = function (data) {
+        console.log(data)
+        ws.send('234')
+        console.log('onmessage' + data)
+    }
+    ws.onerror = function () {
+        console.log('onerror')
+    }
+    ws.onclose = function () {
+        console.log('onclose')
+    }
+});
+
+app.listen(8000, (err) => {
+    if (!err) { console.log('监听OK') } else {
+        console.log('监听失败')
+    }
+})
+```
+
+## `webSocket`的报文格式有一些不一样：
+![](https://user-gold-cdn.xitu.io/2019/7/27/16c31ace26b59cf7?w=800&h=588&f=png&s=464945)
+
+* 客户端和服务端进行Websocket消息传递是这样的:
+
+  * 客户端：将消息切割成多个帧，并发送给服务端。
+  * 服务端：接收消息帧，并将关联的帧重新组装成完整的消息。
+
+## 即时通讯的心跳检测： 
+
+### `ping`and`pong`
+
+
+* 服务端`Go`实现：
+```
+package main
+
+import (
+    "net/http"
+    "time"
+
+    "github.com/gorilla/websocket"
+)
+
+var (
+    //完成握手操作
+    upgrade = websocket.Upgrader{
+       //允许跨域(一般来讲,websocket都是独立部署的)
+       CheckOrigin:func(r *http.Request) bool {
+            return true
+       },
+    }
+)
+
+func wsHandler(w http.ResponseWriter, r *http.Request) {
+   var (
+         conn *websocket.Conn
+         err error
+         data []byte
+   )
+   //服务端对客户端的http请求(升级为websocket协议)进行应答，应答之后，协议升级为websocket，http建立连接时的tcp三次握手将保持。
+   if conn, err = upgrade.Upgrade(w, r, nil); err != nil {
+        return
+   }
+
+    //启动一个协程，每隔5s向客户端发送一次心跳消息
+    go func() {
+        var (
+            err error
+        )
+        for {
+            if err = conn.WriteMessage(websocket.TextMessage, []byte("heartbeat")); err != nil {
+                return
+            }
+            time.Sleep(5 * time.Second)
+        }
+    }()
+
+   //得到websocket的长链接之后,就可以对客户端传递的数据进行操作了
+   for {
+         //通过websocket长链接读到的数据可以是text文本数据，也可以是二进制Binary
+        if _, data, err = conn.ReadMessage(); err != nil {
+            goto ERR
+     }
+     if err = conn.WriteMessage(websocket.TextMessage, data); err != nil {
+         goto ERR
+     }
+   }
+ERR:
+    //出错之后，关闭socket连接
+    conn.Close()
+}
+
+func main() {
+    http.HandleFunc("/ws", wsHandler)
+    http.ListenAndServe("0.0.0.0:7777", nil)
+}
+```
+### 客户端的心跳检测(`Node.js`实现)：
+
+```
+this.heartTimer = setInterval(() => {
+      if (this.heartbeatLoss < MAXLOSSTIMES) {
+        events.emit('network', 'sendHeart');
+        this.heartbeatLoss += 1;
+        this.phoneLoss += 1;
+      } else {
+        events.emit('network', 'offline');
+        this.stop();
+      }
+      if (this.phoneLoss > MAXLOSSTIMES) {
+        this.PhoneLive = false;
+        events.emit('network', 'phoneDisconnect');
+      }
+    }, 5000);
+
+```
+
+## 自定义即时通信协议：
+
+### 从`new Socket`开始：
+
+* 目前即时通讯大都使用现有大公司成熟的`SDK`接入，但是逼格高些还是自己重写比较好。
+* 打个小广告，我们公司就是自己定义的即时通讯协议～招聘一位高级前端，地点深圳-深南大道，做跨平台`IM`桌面应用开发的～ 
+* 客户端代码实现（Node.js）:
+```
+
+const {Socket} = require('net') 
+const tcp = new Socket()
+tcp.setKeepAlive(true);
+tcp.setNoDelay(true);
+//保持底层tcp链接不断，长连接
+指定对应域名端口号链接
+tcp.connect(80,166.166.0.0)
+建立连接后
+根据后端传送的数据类型 使用对应不同的解析
+readUInt8 readUInt16LE readUInt32LE readIntLE等处理后得到myBuf 
+const myBuf = buffer.slice(start);//从对应的指针开始的位置截取buffer
+const header = myBuf.slice(headstart,headend)//截取对应的头部buffer
+const body = JSON.parse(myBuf.slice(headend-headstart,bodylength).tostring())
+//精确截取数据体的buffer,并且转化成js对象
+```
+
+> 即时通讯强烈推荐使用`Golang`,`GRPC`,`Prob`传输数据。
+
+## 上面的一些代码，都在我的开源项目中：
+
+* 手写的静态资源服务器,https://github.com/JinJieTan/util-static-server
+* `webpack-electron-react-websocket`的Demo, https://github.com/JinJieTan/react-electron-webpack
+
+> 觉得写得不错，可以点个赞支持下，文章也借鉴了一下其他大佬的文章，但是地址都贴上来了～ 欢迎`gitHub`点个`star`哦～
+ 
